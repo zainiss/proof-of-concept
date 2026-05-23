@@ -1,145 +1,227 @@
-const ZONE_W = 110;
-const ZONE_H = 44;
-const ZONE_GAP = 20;
+const correctSentence = [
+  "The brave prince",
+  "entered",
+  "the dark forest",
+  "alone"
+];
 
-// Track which tile occupies each zone (null = empty)
 const zoneOccupant = { 0: null, 1: null, 2: null, 3: null };
+const popup = document.getElementById("result-popup");
 
-// Position drop zones in a centered row in the top third of the screen
-function positionZones() {
-  const zones = document.querySelectorAll('.drop-zone');
-  const totalW = zones.length * ZONE_W + (zones.length - 1) * ZONE_GAP;
-  const startX = (window.innerWidth - totalW) / 2;
-  const y = Math.round(window.innerHeight * 0.28);
+let active = null;
+let offsetX = 0;
+let offsetY = 0;
+let popupTimer = null;
 
-  zones.forEach((zone, i) => {
-    zone.style.left = (startX + i * (ZONE_W + ZONE_GAP)) + 'px';
-    zone.style.top  = y + 'px';
+function makeTilesDraggable() {
+  const tiles = Array.from(document.querySelectorAll(".word-tile"));
+  const positions = tiles.map((tile) => {
+    const rect = tile.getBoundingClientRect();
+    return { tile, left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+  });
+
+  positions.forEach(({ tile, left, top, width, height }) => {
+    tile.style.position = "absolute";
+    tile.style.left = `${left}px`;
+    tile.style.top = `${top}px`;
+    tile.style.width = `${width}px`;
+    tile.style.height = `${height}px`;
   });
 }
 
-// Scatter tiles randomly in the bottom portion of the screen
-function scatter(tile) {
-  const padding = 60;
-  const topBoundary = Math.round(window.innerHeight * 0.55);
-  const maxX = window.innerWidth  - tile.offsetWidth  - padding;
-  const maxY = window.innerHeight - tile.offsetHeight - padding;
-  tile.style.left = (padding + Math.random() * (maxX - padding)) + 'px';
-  tile.style.top  = (topBoundary + Math.random() * (maxY - topBoundary)) + 'px';
+function arrangeLooseTiles() {
+  const looseTiles = Array.from(document.querySelectorAll(".word-tile")).filter(
+    (tile) => tile.dataset.zone === undefined
+  );
+  if (!looseTiles.length) return;
+
+  const dropRow = document.querySelector(".drop-row");
+  const dropRect = dropRow.getBoundingClientRect();
+  const gap = Math.min(Math.max(window.innerWidth * 0.03, 22), 46);
+  const marginTop = Math.min(Math.max(window.innerHeight * 0.075, 48), 70);
+  const shuffledWords = ["entered", "alone", "The brave prince", "the dark forest"];
+  const orderedTiles = shuffledWords
+    .map((word) => looseTiles.find((tile) => tile.dataset.word === word))
+    .filter(Boolean);
+  const availableWidth = window.innerWidth - 28;
+  const rowWidth = orderedTiles.reduce((sum, tile) => sum + tile.offsetWidth, 0) + gap * (orderedTiles.length - 1);
+  const shouldWrap = rowWidth > availableWidth;
+  const rows = shouldWrap
+    ? [orderedTiles.slice(0, 2), orderedTiles.slice(2)]
+    : [orderedTiles];
+  let y = dropRect.bottom + marginTop;
+
+  rows.forEach((row) => {
+    const currentRowWidth = row.reduce((sum, tile) => sum + tile.offsetWidth, 0) + gap * (row.length - 1);
+    let x = (window.innerWidth - currentRowWidth) / 2;
+    const rowHeight = Math.max(...row.map((tile) => tile.offsetHeight));
+
+    row.forEach((tile) => {
+      tile.style.left = `${x}px`;
+      tile.style.top = `${y}px`;
+      x += tile.offsetWidth + gap;
+    });
+
+    y += rowHeight + 18;
+  });
 }
 
-// Returns the zone element whose bounds contain the tile's center, or null
+function getZoneId(zone) {
+  return Number(zone.id.replace("zone-", ""));
+}
+
+function clearPopup() {
+  clearTimeout(popupTimer);
+  popup.className = "result-popup";
+  popup.textContent = "";
+}
+
+function showPopup(isCorrect) {
+  clearPopup();
+  popup.textContent = isCorrect ? "Right!" : "Wrong!";
+  popup.classList.add("show", isCorrect ? "correct" : "wrong");
+
+  popupTimer = setTimeout(() => {
+    popup.classList.remove("show");
+  }, 1800);
+}
+
+function checkAnswer() {
+  const filledZones = Object.values(zoneOccupant).filter(Boolean).length;
+  if (filledZones !== correctSentence.length) return;
+
+  const currentSentence = correctSentence.map((_, index) => {
+    const tile = zoneOccupant[index];
+    return tile ? tile.dataset.word : "";
+  });
+
+  const isCorrect = currentSentence.every((word, index) => word === correctSentence[index]);
+  showPopup(isCorrect);
+}
+
 function getOverlappingZone(tile) {
-  const tr = tile.getBoundingClientRect();
-  const cx = tr.left + tr.width  / 2;
-  const cy = tr.top  + tr.height / 2;
+  const tileRect = tile.getBoundingClientRect();
+  const centerX = tileRect.left + tileRect.width / 2;
+  const centerY = tileRect.top + tileRect.height / 2;
+  let bestZone = null;
+  let bestDistance = Infinity;
 
-  let best = null;
-  let bestDist = Infinity;
+  document.querySelectorAll(".drop-zone").forEach((zone) => {
+    const zoneRect = zone.getBoundingClientRect();
+    const insideZone =
+      centerX >= zoneRect.left &&
+      centerX <= zoneRect.right &&
+      centerY >= zoneRect.top &&
+      centerY <= zoneRect.bottom;
 
-  document.querySelectorAll('.drop-zone').forEach(zone => {
-    const zr = zone.getBoundingClientRect();
-    if (cx >= zr.left && cx <= zr.right && cy >= zr.top && cy <= zr.bottom) {
-      const dist = Math.hypot(cx - (zr.left + zr.width / 2), cy - (zr.top + zr.height / 2));
-      if (dist < bestDist) { bestDist = dist; best = zone; }
+    if (!insideZone) return;
+
+    const zoneCenterX = zoneRect.left + zoneRect.width / 2;
+    const zoneCenterY = zoneRect.top + zoneRect.height / 2;
+    const distance = Math.hypot(centerX - zoneCenterX, centerY - zoneCenterY);
+
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestZone = zone;
     }
   });
 
-  return best;
+  return bestZone;
 }
 
-// Snap a tile into a zone, centered
 function snapToZone(tile, zone) {
-  const zr   = zone.getBoundingClientRect();
-  const tr   = tile.getBoundingClientRect();
-  const newLeft = zr.left + (zr.width  - tr.width)  / 2;
-  const newTop  = zr.top  + (zr.height - tr.height) / 2;
+  const zoneRect = zone.getBoundingClientRect();
+  const tileRect = tile.getBoundingClientRect();
+  const newLeft = zoneRect.left + (zoneRect.width - tileRect.width) / 2;
+  const newTop = zoneRect.top + (zoneRect.height - tileRect.height) / 2;
+  const zoneId = getZoneId(zone);
 
-  tile.classList.add('snapping');
-  tile.style.left = newLeft + 'px';
-  tile.style.top  = newTop  + 'px';
-  tile.style.transform = 'scale(1)';
+  tile.classList.add("snapping");
+  tile.style.left = `${newLeft}px`;
+  tile.style.top = `${newTop}px`;
+  tile.style.transform = "scale(1)";
 
-  tile.addEventListener('transitionend', () => {
-    tile.classList.remove('snapping');
-  }, { once: true });
+  tile.addEventListener(
+    "transitionend",
+    () => {
+      tile.classList.remove("snapping");
+    },
+    { once: true }
+  );
 
-  const zoneId = parseInt(zone.id.split('-')[1]);
   zoneOccupant[zoneId] = tile;
   tile.dataset.zone = zoneId;
-  zone.classList.add('filled');
-  zone.classList.remove('hovered');
+  zone.classList.add("filled");
+  zone.classList.remove("hovered");
+  checkAnswer();
 }
 
-// Free a tile from its zone
 function freeFromZone(tile) {
   const zoneId = tile.dataset.zone;
-  if (zoneId !== undefined) {
-    zoneOccupant[zoneId] = null;
-    delete tile.dataset.zone;
-    const zone = document.getElementById('zone-' + zoneId);
-    if (zone) zone.classList.remove('filled', 'hovered');
-  }
+  if (zoneId === undefined) return;
+
+  zoneOccupant[zoneId] = null;
+  delete tile.dataset.zone;
+
+  const zone = document.getElementById(`zone-${zoneId}`);
+  if (zone) zone.classList.remove("filled", "hovered");
 }
 
-// ── Dragging ────────────────────────────────────────────────────────────────
-
-let active  = null;
-let offsetX = 0;
-let offsetY = 0;
-
-function onPointerDown(e) {
-  active = e.currentTarget;
+function onPointerDown(event) {
+  active = event.currentTarget;
   const rect = active.getBoundingClientRect();
-  offsetX = e.clientX - rect.left;
-  offsetY = e.clientY - rect.top;
+  offsetX = event.clientX - rect.left;
+  offsetY = event.clientY - rect.top;
 
+  clearPopup();
   freeFromZone(active);
 
-  active.classList.remove('snapping');
-  active.classList.add('dragging');
-  active.style.zIndex = Date.now();
-  e.preventDefault();
+  active.setPointerCapture(event.pointerId);
+  active.classList.remove("snapping");
+  active.classList.add("dragging");
+  active.style.zIndex = String(Date.now());
+  event.preventDefault();
 }
 
-function onPointerMove(e) {
+function onPointerMove(event) {
   if (!active) return;
-  active.style.left = (e.clientX - offsetX) + 'px';
-  active.style.top  = (e.clientY - offsetY) + 'px';
 
-  // Highlight the zone the tile is hovering over
-  document.querySelectorAll('.drop-zone').forEach(z => z.classList.remove('hovered'));
-  const hovered = getOverlappingZone(active);
-  if (hovered) {
-    const zId = parseInt(hovered.id.split('-')[1]);
-    if (!zoneOccupant[zId]) hovered.classList.add('hovered');
-  }
+  active.style.left = `${event.clientX - offsetX}px`;
+  active.style.top = `${event.clientY - offsetY}px`;
+
+  document.querySelectorAll(".drop-zone").forEach((zone) => zone.classList.remove("hovered"));
+  const hoveredZone = getOverlappingZone(active);
+
+  if (!hoveredZone) return;
+
+  const zoneId = getZoneId(hoveredZone);
+  if (!zoneOccupant[zoneId]) hoveredZone.classList.add("hovered");
 }
 
 function onPointerUp() {
   if (!active) return;
-  active.classList.remove('dragging');
-  document.querySelectorAll('.drop-zone').forEach(z => z.classList.remove('hovered'));
+
+  active.classList.remove("dragging");
+  document.querySelectorAll(".drop-zone").forEach((zone) => zone.classList.remove("hovered"));
 
   const zone = getOverlappingZone(active);
   if (zone) {
-    const zoneId = parseInt(zone.id.split('-')[1]);
-    if (!zoneOccupant[zoneId]) {
-      snapToZone(active, zone);
-    }
+    const zoneId = getZoneId(zone);
+    if (!zoneOccupant[zoneId]) snapToZone(active, zone);
   }
 
   active = null;
 }
 
-// ── Init ─────────────────────────────────────────────────────────────────────
+window.addEventListener("load", () => {
+  makeTilesDraggable();
+  arrangeLooseTiles();
 
-positionZones();
+  document.querySelectorAll(".word-tile").forEach((tile) => {
+    tile.addEventListener("pointerdown", onPointerDown);
+  });
 
-document.querySelectorAll('.word-tile').forEach(tile => {
-  scatter(tile);
-  tile.addEventListener('mousedown', onPointerDown);
+  document.addEventListener("pointermove", onPointerMove);
+  document.addEventListener("pointerup", onPointerUp);
+  window.addEventListener("resize", arrangeLooseTiles);
 });
-
-document.addEventListener('mousemove', onPointerMove);
-document.addEventListener('mouseup',   onPointerUp);

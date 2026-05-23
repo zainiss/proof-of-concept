@@ -3,20 +3,27 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Passage Reconstruction — POC</title>
+  <title>Passage Reconstruction - POC</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <main class="game-board" aria-label="Build the sentence">
+    <section class="drop-row" aria-label="Sentence spaces">
+      <div class="drop-zone" id="zone-0" data-number="1"></div>
+      <div class="drop-zone" id="zone-1" data-number="2"></div>
+      <div class="drop-zone" id="zone-2" data-number="3"></div>
+      <div class="drop-zone" id="zone-3" data-number="4"></div>
+    </section>
 
-  <div class="drop-zone" id="zone-0"></div>
-  <div class="drop-zone" id="zone-1"></div>
-  <div class="drop-zone" id="zone-2"></div>
-  <div class="drop-zone" id="zone-3"></div>
+    <section class="word-row" aria-label="Word choices">
+      <div class="word-tile" data-word="The brave prince">The brave prince</div>
+      <div class="word-tile" data-word="entered">entered</div>
+      <div class="word-tile" data-word="the dark forest">the dark forest</div>
+      <div class="word-tile" data-word="alone">alone</div>
+    </section>
+  </main>
 
-  <div class="word-tile" data-word="hello">hello</div>
-  <div class="word-tile" data-word="plant">plant</div>
-  <div class="word-tile" data-word="grass">grass</div>
-  <div class="word-tile" data-word="Zain">Zain</div>
+  <div class="result-popup" id="result-popup" role="status" aria-live="polite"></div>
 
   <script src="script.js"></script>
 </body>
