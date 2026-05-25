@@ -96,6 +96,35 @@ body {
   border-style: solid;
 }
 
+.reset-button {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  padding: 10px 18px;
+  border: 2px solid #8fcaff;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #073642;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(18, 42, 52, 0.1);
+  transform: translateX(-50%);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  z-index: 1500;
+}
+
+.reset-button:hover {
+  background-color: #eef9ff;
+  box-shadow: 0 10px 24px rgba(18, 42, 52, 0.14);
+  transform: translateX(-50%) translateY(-1px);
+}
+
+.reset-button:active {
+  transform: translateX(-50%) translateY(1px);
+}
+
 .word-tile {
   position: relative;
   display: grid;
