@@ -233,7 +233,24 @@ function onPointerUp() {
   active = null;
 }
 
+function runLandingScreen() {
+  const landing = document.getElementById("landing-screen");
+  if (!landing) return;
+
+  // Hold for ~3.5s (including the 0.3s + 0.7s text animation = 1s), then fade out over 0.9s
+  const holdMs = 3500;
+  const fadeDurationMs = 900;
+
+  setTimeout(() => {
+    landing.classList.add("fade-out");
+    setTimeout(() => {
+      landing.classList.add("hidden");
+    }, fadeDurationMs);
+  }, holdMs);
+}
+
 window.addEventListener("load", () => {
+  runLandingScreen();
   makeTilesDraggable();
   arrangeLooseTiles();
 

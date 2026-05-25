@@ -4,6 +4,51 @@
   box-sizing: border-box;
 }
 
+/* ── Landing screen ── */
+#landing-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.68) 42%, rgba(247, 246, 241, 0.9) 100%),
+    #fbfaf7;
+  opacity: 1;
+  transition: opacity 0.9s ease;
+  pointer-events: none;
+}
+
+#landing-screen.fade-out {
+  opacity: 0;
+}
+
+#landing-screen.hidden {
+  display: none;
+}
+
+#landing-sentence {
+  color: #0d3540;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: clamp(22px, 3.2vw, 42px);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-align: center;
+  max-width: 72ch;
+  padding: 0 clamp(24px, 5vw, 64px);
+  opacity: 0;
+  transform: translateY(10px);
+  animation: sentenceFadeIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.3s forwards;
+}
+
+@keyframes sentenceFadeIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 html,
 body {
   width: 100%;
