@@ -7,6 +7,7 @@ const correctSentence = [
 
 const zoneOccupant = { 0: null, 1: null, 2: null, 3: null };
 const popup = document.getElementById("result-popup");
+const resetButton = document.getElementById("reset-button");
 
 let active = null;
 let offsetX = 0;
@@ -167,6 +168,25 @@ function freeFromZone(tile) {
   if (zone) zone.classList.remove("filled", "hovered");
 }
 
+function resetGame() {
+  active = null;
+  clearPopup();
+
+  Object.keys(zoneOccupant).forEach((zoneId) => {
+    zoneOccupant[zoneId] = null;
+    const zone = document.getElementById(`zone-${zoneId}`);
+    if (zone) zone.classList.remove("filled", "hovered");
+  });
+
+  document.querySelectorAll(".word-tile").forEach((tile) => {
+    delete tile.dataset.zone;
+    tile.classList.remove("dragging", "snapping");
+    tile.style.transform = "scale(1)";
+  });
+
+  arrangeLooseTiles();
+}
+
 function onPointerDown(event) {
   active = event.currentTarget;
   const rect = active.getBoundingClientRect();
@@ -224,4 +244,5 @@ window.addEventListener("load", () => {
   document.addEventListener("pointermove", onPointerMove);
   document.addEventListener("pointerup", onPointerUp);
   window.addEventListener("resize", arrangeLooseTiles);
+  resetButton.addEventListener("click", resetGame);
 });
